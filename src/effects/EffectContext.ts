@@ -2,28 +2,71 @@ import { Scene } from "../scene/Scene"
 import { Vec2 } from "../engine/types"
 import { Laser, LaserSource } from "../entities/Laser"
 import gsap from "gsap"
+import { CONFIG } from "../config"
+import { Tile } from "../entities/Tile"
 
+type EffectContextDeps = {
+  scene: Scene
+  ctx: CanvasRenderingContext2D
+  tiles: Tile[][]
+}
 // EffectContext provides controlled access for modes to interact with the scene
 export class EffectContext {
   private scene: Scene
+  private ctx: CanvasRenderingContext2D
+  private tiles: Tile[][]
+  
+  private rotationIntervalId: number | null = null
+  private rotationActive = false
 
-  constructor(scene: Scene) {
+  constructor({ scene, ctx, tiles }: EffectContextDeps) {
     this.scene = scene
+    this.ctx = ctx
+    this.tiles = tiles
+
+    console.log("tiles in EffectContext (len):", this.tiles?.length)
+  }
+
+
+  // simpleFade
+  fadeTile(row: number, col: number) {
+    console.log("fadeTile called", row, col)
+    const tile = this.getTile(row, col)
+    console.log("tile:", tile)
+    if (!tile) return
+  
+    gsap.to(tile, {
+      opacity: 0,
+      duration: 3,
+      ease: "linear",
+      // onUpdate: () => console.log("animating", tile.opacity),
+    })
   }
 
   // ---- Persistent entities ----
 
   private laserIntervalId: number | null = null
   private laserSource: LaserSource | null = null
+
   ensureLaserSource() {
     if (this.laserSource) return
 
     const source = new LaserSource({
-      x: window.innerWidth / 2,
-      y: 20,
+      x: this.ctx.canvas.width / 2,
+      y: CONFIG.laser.source.y,
     })
     this.scene.add(source)
     this.laserSource = source
+  }
+
+  // Stop all animating tweens
+  stop() {
+    if (this.laserIntervalId !== null) {
+      clearInterval(this.laserIntervalId)
+      this.laserIntervalId = null
+    }
+  
+    gsap.killTweensOf("*")
   }
 
   // ---- Effect state (per tile) ----
@@ -64,9 +107,9 @@ export class EffectContext {
 
   startLaserLoop() {
     // console.log("starting laser loop")
-    if (this.laserIntervalId !== null) return
-
     this.ensureLaserSource()
+
+    if (this.laserIntervalId !== null) return
 
     this.laserIntervalId = window.setInterval(() => {
       this.tickLaser()
@@ -90,8 +133,8 @@ export class EffectContext {
     const target = candidates[Math.floor(Math.random() * candidates.length)]
 
     const from = {
-      x: window.innerWidth / 2,
-      y: 20,
+      x: this.ctx.canvas.width / 2,
+      y: CONFIG.laser.source.y,
     }
 
     const to = this.getTilePosition(target.row, target.col)
@@ -109,21 +152,23 @@ export class EffectContext {
   // NOTE: These are placeholders for now.
   // We'll wire them properly once tiles are managed more centrally.
 
-  getTile(_row: number, _col: number) {
-    return undefined
+  getTile(row: number, col: number): Tile | undefined {
+    console.log("in getTile")
+    return this.tiles?.[row]?.[col]
   }
 
   getTilePosition(row: number, col: number): Vec2 {
-    // Basic layout assumption (should match Tile.ts for now)
-    const size = 60
-    const gap = 8
+    const size = CONFIG.grid.tileSize
+    const gap = CONFIG.grid.gap
+    const cols = CONFIG.grid.cols
+    const rows = CONFIG.grid.rows
 
-    const totalWidth = 5 * size + 4 * gap
-    const totalHeight = 6 * size + 5 * gap
+    const totalWidth = cols * size + (cols - 1) * gap
+    const totalHeight = rows * size + (rows - 1) * gap
 
     const origin = {
-      x: (window.innerWidth - totalWidth) / 2,
-      y: (window.innerHeight - totalHeight) / 2,
+      x: (this.ctx.canvas.width - totalWidth) / 2,
+      y: (this.ctx.canvas.height - totalHeight) / 2,
     }
 
     return {
@@ -181,11 +226,21 @@ export class EffectContext {
     })
 
     // ---- Fire (laser) ----
-    tl.to(laser, {
-      progress: 1,
-      duration: 0.1,
-      ease: "power4.out",
-    })
+    // tl.to(laser, {
+    //   progress: 1,
+    //   duration: 0.1,
+    //   ease: "power4.out",
+    // })
+    tl.fromTo(
+      laser,
+      { progress: 0, width: 40 },   // start values
+      {
+        progress: 1,
+        width: 8,
+        duration: 0.2,
+        ease: "power4.out",
+      }
+    )
     // Quick settle to medium size after snap
     tl.to(source, {
       baseScale: 1.2,
@@ -227,10 +282,10 @@ export class EffectContext {
 
       // pulse laser thickness
       gsap.to(laser, {
-        width: 1.6,
+        width: 4,
         yoyo: true,
         repeat: 3,
-        duration: 0.08,
+        duration: 0.2,
         ease: "power1.inOut",
       })
 
@@ -272,6 +327,70 @@ export class EffectContext {
     // Removed standalone source pulse gsap.to(...) as per instructions
   }
 
+  // rotationPulse
+  startRotationPulse() {
+    if (this.rotationIntervalId !== null) return
+  
+    this.rotationIntervalId = window.setInterval(() => {
+      if (!this.rotationActive) return
+      this.tickRotationPulse()
+    }, 5000)
+  }
+
+  enableRotationPulse() {
+    this.rotationActive = true
+  }
+
+  // private tickRotationPulse() {
+  //   for (let row = 0; row < this.tiles.length; row++) {
+  //     for (let col = 0; col < this.tiles[row].length; col++) {
+  //       const tile = this.tiles[row][col]
+  //       if (!tile) continue
+  
+  //       // const delta = 5* (row + col)
+  //       const delta = 5 * Math.sqrt(row*row + col*col)
+  
+  //       gsap.to(tile, {
+  //         angle: (tile.angle ?? 0) + delta,
+  //         duration: 0.2,
+  //         ease: "power3.out",
+  //       })
+  //     }
+  //   }
+  // }
+
+
+  // private tickRotationPulse() {
+  //   const tiles = this.tiles.flat()
+  
+  //   gsap.to(tiles, {
+  //     angle: (i, tile: Tile) =>
+  //       (tile.angle ?? 0) +
+  //       5 * Math.sqrt(tile.row * tile.row + tile.col * tile.col),
+  
+  //     duration: 0.2,
+  //     ease: "power3.out",
+  
+  //     stagger: (i, tile: Tile) =>
+  //       0.02 * (tile.row + tile.col),
+  //   })
+  // }
+
+  private tickRotationPulse() {
+    const tiles = this.tiles.flat()
+  
+    gsap.to(tiles, {
+      angle: "+=15",
+      duration: 0.2,
+      // ease: "power3.out",
+      ease: "back.out(6)",
+  
+      stagger: (i, tile: Tile) =>
+        0.1 * (tile.row + tile.col),
+    })
+  }
+
+  // general
   destroyTile(_row: number, _col: number) {
     // Placeholder: will hook into actual tile entities later
   }

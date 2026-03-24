@@ -1,5 +1,6 @@
 import { Entity } from "../scene/Entity"
 import { Vec2 } from "../engine/types"
+import { CONFIG } from "../config"
 
 // Simple laser beam entity
 export class Laser implements Entity {
@@ -9,7 +10,7 @@ export class Laser implements Entity {
   progress: number = 0 // 0 → 1 (animated)
   opacity: number = 1
 
-  baseWidth: number = 4
+  baseWidth: number = CONFIG.laser.width.medium
   width: number
 
   color: string = "#ff2e63"
@@ -74,7 +75,7 @@ export class Laser implements Entity {
 export class LaserSource implements Entity {
   position: Vec2
 
-  radius: number = 20
+  radius: number = 20 // keep for now (no config entry yet)
   baseScale: number = 1
   oscAmp: number = 0.05
   oscSpeed: number = 2

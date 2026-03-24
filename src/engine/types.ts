@@ -1,6 +1,11 @@
 // ---------- Basic shared types ----------
 
+import { EffectContext } from "../effects/EffectContext";
+
 export type Vec2 = { x: number; y: number }
+
+export const noopOnStart = () => {}
+export const noopHandleEvent = () => {}
 
 // ---------- Game state (model) ----------
 
@@ -9,10 +14,43 @@ export type GameStatus = "playing" | "won" | "lost"
 export type TargetWordSource = "daily" | "random"
 
 export type ObscureMode =
-  | "none"
+  | "normal"
   | "simpleFade"
   | "laserBlast"
-  | "gravity"
+  | "rotationPulse"
+
+export type ObscureMeta = {
+  label: string
+  onStart: (ctx: EffectContext) => void
+  handleEvent: (event: any, ctx: any) => void
+}
+
+export const OBSCURE_META_BY: Record<ObscureMode, ObscureMeta> = {
+  normal:
+  {
+    label: "Normal",
+    onStart: noopOnStart,
+    handleEvent: noopHandleEvent 
+  },
+  simpleFade:
+  {
+    label: "Simple Fade",
+    onStart: noopOnStart,
+    handleEvent: noopHandleEvent 
+  },
+  laserBlast:
+  { 
+    label: "Laser Blast", 
+    onStart: noopOnStart,
+    handleEvent: noopHandleEvent 
+  },
+  rotationPulse:
+  { 
+    label: "Rotation Pulse", 
+    onStart: noopOnStart,
+    handleEvent: noopHandleEvent 
+  },
+}
 
 // "notSubmitted" means the tile has not yet been evaluated (row not submitted)
 export type TileResult = "correct" | "present" | "absent" | "notSubmitted"

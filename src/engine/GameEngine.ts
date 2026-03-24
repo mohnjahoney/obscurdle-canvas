@@ -2,7 +2,7 @@ import { Scene } from "../scene/Scene"
 import { update } from "./update"
 import { GameState, Msg } from "./types"
 import { EffectContext } from "../effects/EffectContext"
-import { OBSCURE_MODES } from "../modes/obscureModes"
+import { OBSCURE_META_BY } from "../modes/obscureModes"
 import { Tile } from "../entities/Tile"
 
 // Minimal GameEngine: owns canvas, loop, state, and dispatch
@@ -16,6 +16,7 @@ export class GameEngine {
 
   private state: GameState
   private lastTime = 0
+  private rafId: number | null = null
 
   constructor(opts: {
     canvas: HTMLCanvasElement
@@ -27,10 +28,6 @@ export class GameEngine {
     this.ctx = ctx
 
     this.scene = new Scene()
-    this.effectContext = new EffectContext(this.scene)
-    ;(window as any).effectContext = this.effectContext
-
-    ;(window as any).engine = this
 
     this.state = opts.initialState
 
@@ -38,20 +35,44 @@ export class GameEngine {
     this.initTiles()
     this.updateTilesFromState()
 
-    this.resize()
-    window.addEventListener("resize", this.resize)
+    this.effectContext = new EffectContext({
+      scene: this.scene,
+      ctx: this.ctx,
+      tiles: this.tiles,
+    })
+
+    ;(window as any).effectContext = this.effectContext
+    ;(window as any).engine = this
+
+    // this.resize()
+    // window.addEventListener("resize", this.resize)
   }
 
   // ---- Public API ----
 
   start() {
+    const obscureMeta = OBSCURE_META_BY[this.state.obscureMode]
+    obscureMeta?.onStart?.(this.effectContext)
+
     this.lastTime = performance.now()
-  
-    if (this.state.obscureMode === "laserBlast") {
-      this.effectContext.startLaserLoop()
+    this.rafId = requestAnimationFrame(this.loop)
+  }
+
+  destroy() {
+    // stop animation loop
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId)
+      this.rafId = null
     }
-  
-    requestAnimationFrame(this.loop)
+
+    // stop effects if available
+    this.effectContext?.stop?.()
+
+    // clear scene
+    this.scene.clear()
+
+    // remove resize listener
+    // window.removeEventListener("resize", this.resize)
   }
 
   dispatch(msg: Msg) {
@@ -60,16 +81,14 @@ export class GameEngine {
 
     this.updateTilesFromState()
 
-    const ctx = this.effectContext
-
-    const mode = OBSCURE_MODES[this.state.obscureMode as keyof typeof OBSCURE_MODES]
+    const obscureMeta = OBSCURE_META_BY[this.state.obscureMode]
 
     // console.log("in dispatch")
 
-    if (!mode || !mode.handleEvent) return
+    if (!obscureMeta || !obscureMeta.handleEvent) return
 
     for (const event of events) {
-      mode.handleEvent(event, ctx)
+      obscureMeta.handleEvent(event, this.effectContext)
     }
   }
 
@@ -103,8 +122,8 @@ export class GameEngine {
         // console.log("grid cell", this.state.grid[row][col])
         const tile = this.tiles[row][col]
         const data = this.state.grid[row][col]
-        // update tile data (safe optional call)
-        ;(tile as any).setData?.(data)
+          // update tile data (safe optional call)
+          ; (tile as any).setData?.(data)
         // if (row === 0 && col === 0) {
         //   console.log("data going into tile", data)
         // }
@@ -121,7 +140,7 @@ export class GameEngine {
     this.update(dt)
     this.render()
 
-    requestAnimationFrame(this.loop)
+    this.rafId = requestAnimationFrame(this.loop)
   }
 
   private update(dt: number) {
@@ -138,13 +157,13 @@ export class GameEngine {
 
   // ---- Helpers ----
 
-  private resize = () => {
-    const dpr = window.devicePixelRatio || 1
-    const rect = this.canvas.getBoundingClientRect()
+  // private resize = () => {
+  //   const dpr = window.devicePixelRatio || 1
+  //   const rect = this.canvas.getBoundingClientRect()
 
-    this.canvas.width = Math.floor(rect.width * dpr)
-    this.canvas.height = Math.floor(rect.height * dpr)
+  //   this.canvas.width = Math.floor(rect.width * dpr)
+  //   this.canvas.height = Math.floor(rect.height * dpr)
 
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  }
+  //   this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  // }
 }

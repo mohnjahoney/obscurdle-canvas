@@ -1,37 +1,73 @@
 import { GameEvent } from "../engine/types"
 import { EffectContext } from "../effects/EffectContext"
+import { ObscureMode, ObscureMeta, noopOnStart, noopHandleEvent } from "../engine/types"
 
-// ---- Types ----
+// ---- Mode implementations ----
 
-export type ObscureMode = {
-  id: "laserBlast"
-  label: string
-  handleEvent: (event: GameEvent, ctx: EffectContext) => void
+const normalMeta: ObscureMeta = {
+  label: "Normal",
+
+  onStart: noopOnStart,
+
+  handleEvent: noopHandleEvent,
 }
 
-// ---- Laser Blast Mode ----
+const simpleFadeMeta: ObscureMeta = {
+  label: "Simple Fade",
 
-export const laserBlast: ObscureMode = {
-  id: "laserBlast",
-  label: "Laser Blast",
+  onStart() {},
 
   handleEvent(event, ctx) {
-    // Trigger on each tile reveal
     if (event.type !== "tile_revealed") return
 
-    // Only fire for correct tiles
+    const { row, col } = event
+    console.log("in handleEvent", row, col)
+    ctx.fadeTile(row, col)
+  },
+}
+
+const laserBlastMeta: ObscureMeta = {
+  label: "Laser Blast",
+
+  onStart(ctx) {
+    ctx.startLaserLoop()
+  },
+
+  handleEvent(event, ctx) {
+    if (event.type !== "tile_revealed") return
     if (event.result !== "correct") return
 
     const { row, col } = event
-
-    // Ensure tile is registered in effect system
-    // ctx.applyBurnEffect(row, col)
     ctx.registerTile(row, col)
   },
 }
 
+const rotationPulseMeta: ObscureMeta = {
+  label: "Rotation Pulse",
+
+  onStart(ctx) {
+    console.log('in onstart rotation')
+    ctx.startRotationPulse()
+  },
+
+  handleEvent(event, ctx) {
+    // console.log('in handleEvent rotation')
+    console.log("event", event)
+    if (event.type !== "guess_submitted") return
+
+    console.log('in handleEvent about to pulse')
+    ctx.enableRotationPulse()
+  },
+}
 // ---- Registry ----
 
-export const OBSCURE_MODES = {
-  laserBlast,
+export const OBSCURE_META_BY: Record<ObscureMode, ObscureMeta> = {
+  normal: normalMeta,
+  simpleFade: simpleFadeMeta,
+  laserBlast: laserBlastMeta,
+  rotationPulse: rotationPulseMeta,
+  
 }
+
+// Optional list (for UI ordering)
+export const OBSCURE_MODES = Object.keys(OBSCURE_META_BY) as ObscureMode[]

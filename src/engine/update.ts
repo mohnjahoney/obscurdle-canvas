@@ -6,15 +6,7 @@ import {
   TileResult,
 } from "./types"
 
-// Helper: create an empty 6x5 grid
-export function createEmptyGrid(): TileData[][] {
-  return Array.from({ length: 6 }, () =>
-    Array.from({ length: 5 }, () => ({
-      letter: "",
-      result: "notSubmitted" as TileResult,
-    }))
-  )
-}
+
 
 // Evaluate a guess against the target word
 function evaluateGuess(guess: string, target: string): TileResult[] {
