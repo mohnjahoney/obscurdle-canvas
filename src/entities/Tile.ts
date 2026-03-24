@@ -81,7 +81,23 @@ export class Tile implements Entity {
         return "#3a3a3c"
       case "notSubmitted":
       default:
-        return "#121213"
+        // return "#121213"
+        return "#ffffff"
+    }
+  }
+
+  private getFontColor(result: TileResult): string {
+    switch (result) {
+      case "correct":
+        return "#ffffff"
+      case "present":
+        return "#ffffff"
+      case "absent":
+        return "#ffffff"
+      case "notSubmitted":
+      default:
+        // return "#121213"
+        return "#000000"
     }
   }
 
@@ -173,20 +189,30 @@ export class Tile implements Entity {
     // ---- draw everything at (0,0) ----
 
     // background
+    // ctx.fillStyle = this.getFillColor(this.data.result)
+    // ctx.fillRect(0, 0, this.size, this.size)
+
+    const roundRectRadius = 8
+    ctx.beginPath()
     ctx.fillStyle = this.getFillColor(this.data.result)
-    ctx.fillRect(0, 0, this.size, this.size)
+    ctx.roundRect(0, 0, this.size, this.size, roundRectRadius)
+    ctx.fill()
+    
 
     // border
+    ctx.beginPath()
     ctx.strokeStyle = "#3a3a3c"
     ctx.lineWidth = 2
-    ctx.strokeRect(0, 0, this.size, this.size)
+    ctx.roundRect(0, 0, this.size, this.size, roundRectRadius)
+    ctx.stroke()
 
     // letter
     if (this.data.letter) {
       ctx.save()
       ctx.globalAlpha = this.opacity
 
-      ctx.fillStyle = "#ffffff"
+      // ctx.fillStyle = "#ffffff"
+      ctx.fillStyle = this.getFontColor(this.data.result)
       ctx.font = `${Math.floor(this.size * 0.6)}px sans-serif`
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"

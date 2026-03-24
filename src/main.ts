@@ -1,6 +1,7 @@
 // main.ts
 
 import { initApp, startGame } from "./app/App"
+import {createModeSelector} from "./ui/ModeSelector"
 
 // Create canvas once
 const canvas = document.createElement("canvas")
@@ -18,13 +19,9 @@ canvas.height = 800
 
 // Initialize app with canvas
 initApp(canvas)
-
-// Start default game
-// const engine = startGame("normal")
-// const engine = startGame("simpleFade")
-// const engine = startGame("laserBlast")
-const engine = startGame("rotationPulse")
-
-console.log(engine.getState())
+const obscureMode = "normal"
+createModeSelector(obscureMode)
+const engine = startGame(obscureMode)
+// console.log(engine.getState())
 
 
